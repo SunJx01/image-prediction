@@ -73,10 +73,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from io import BytesIO
 from PIL import Image
 from utils import (
-    get_result_image_tl,
-    load_preprocess_image_tl,
-    predict_tl,
-    get_model
+    display_prediction,
+    load_preprocess_image,
+    predict_image,
+    build_and_save_model
 )
 
 # Path to save/load the trained model
@@ -104,7 +104,7 @@ async def train_model():
     Train and save the model if it does not already exist.
     """
     if not os.path.exists(MODEL_PATH):
-        get_model()  # Train and save the model
+        build_and_save_model()  # Train and save the model
         return JSONResponse(content={"message": "Model trained and saved."}, status_code=200)
     return JSONResponse(content={"message": "Model already exists, no need to train."}, status_code=200)
 
@@ -126,13 +126,13 @@ async def upload_image(file: UploadFile = File(...)):
     img_pil = Image.open(BytesIO(image_bytes))
 
     # Preprocess the image for prediction
-    preprocessed_img = load_preprocess_image_tl(img_pil)
+    preprocessed_img = load_preprocess_image(img_pil)
 
     # Predict the class of the image
-    prediction_result = predict_tl(preprocessed_img)
+    prediction_result = predict_image(preprocessed_img)
 
     # Generate result image with the prediction label
-    result_img_bytes = get_result_image_tl(img_pil, prediction_result)
+    result_img_bytes = display_prediction(img_pil, prediction_result)
 
     # Return the result image as a StreamingResponse
     return StreamingResponse(result_img_bytes, media_type="image/png")
