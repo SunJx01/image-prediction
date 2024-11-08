@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Prediction Model</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 flex justify-center items-center min-h-screen">
+  <div class="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
+    
+    <button onclick="trainModel()" 
+            class="w-full p-8 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 transition duration-200">
+      Train Model
+    </button>
+    
+    <h1 class="text-white text-3xl font-bold text-center mb-6 mt-16">Image Prediction Model</h1>
+
+    <form id="uploadForm" class="space-y-4" method="post" enctype="multipart/form-data">
+      <div class="flex justify-center">
+        <label for="File" class="file-input text-white">Choose Image</label>
+        <input type="file" id="File" name="File" class="hidden" onchange="previewImage(event)" />
+      </div>
+      <img id="imagePreview" class="image-preview" />
+      <div class="flex justify-center">
+        <button type="submit" 
+                class="w-full py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition duration-200">
+          Predict Image
+        </button>
+      </div>
+    </form>
+  </div>
+</body>
+</html>
+
+<style>
+  .file-input {
+    background-color: #2d3748;
+    border: 2px solid #4a5568;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  .file-input:hover {
+    background-color: #4a5568;
+  }
+
+  .image-preview {
+    display: none;
+    margin-top: 20px;
+    max-width: 100%;
+    max-height: 250px;
+    object-fit: contain;
+    border-radius: 5px;
+  }
+</style>
+
+<script>
+  // Function to preview the image after selection
+  function previewImage(event) {
+    const file = event.target.files[0];
+    const preview = document.getElementById('imagePreview');
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+    }
+
+    if (file) {
+      reader.readAsDataURL(file);
+    }
+  }
+
+  // Function to trigger model training when clicked
+  async function trainModel() {
+    try {
+      // Send a GET request to the FastAPI backend to train the model
+      const response = await fetch("http://127.0.0.1:8000/train-model");
+
+      // If the response is successful (status code 200), parse the response JSON
+      if (response.ok) {
+        const data = await response.json();
+        alert(data.message);  // Show the message from the backend (success or skip training)
+      } else {
+        alert('Error: Unable to train the model');
+      }
+    } catch (error) {
+      // Handle any errors in the fetch request
+      console.error('Error:', error);
+      alert('Network error: Could not connect to the backend');
+    }
+  }
+
+  // Handle the form submission for image prediction
+  document.getElementById('uploadForm').addEventListener('submit', async function(event) {
+    event.preventDefault(); // Prevent the form from submitting normally
+
+    const formData = new FormData();
+    const fileInput = document.getElementById('File');
+    const file = fileInput.files[0];
+
+    if (!file) {
+      alert("Please choose an image first.");
+      return;
+    }
+
+    formData.append("File", file);
+
+    try {
+      // Send the image to the FastAPI server for prediction (POST request)
+      const response = await fetch("http://127.0.0.1:8000/upload-image", {
+        method: "POST",
+        body: formData
+      });
+
+      // Handle the response
+      if (response.ok) {
+        // Assuming the backend returns the image as a response
+        const blob = await response.blob(); // Read the image blob
+
+        // Create a URL for the blob and set it as the src of an img element
+        const imgUrl = URL.createObjectURL(blob);
+        const resultImage = document.createElement('img');
+        resultImage.src = imgUrl;
+        resultImage.classList.add('image-preview');
+        
+        // Display the result image in the page (you can customize this)
+        document.body.appendChild(resultImage);
+        
+        // Optionally, remove any previous preview image
+        const preview = document.getElementById('imagePreview');
+        preview.style.display = 'none';
+      } else {
+        alert("Error during image prediction.");
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to make prediction.');
+    }
+  });
+</script>
